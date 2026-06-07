@@ -1,72 +1,46 @@
-"""Centralized settings loaded from environment variables.
+"""Settings loaded from environment variables.
 
-Single source of truth for connection strings, secrets, and feature flags.
-All values come from the environment; no .env lookup in production.
+Stdlib only. No pydantic. Returns a simple namespace object so
+existing callers that do `settings.database_url` keep working.
 """
 
-from functools import lru_cache
-from typing import Literal
-
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+import os
+from types import SimpleNamespace
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=None,  # no .env in production; Railway injects env vars
-        case_sensitive=False,
-        extra="ignore",
+def get_env(name: str, default: str = "") -> str:
+    return os.environ.get(name, default)
+
+
+def get_cors_origins() -> list[str]:
+    raw = get_env("CORS_ORIGINS", "*").strip()
+    if not raw:
+        return ["*"]
+    return [p.strip() for p in raw.split(",") if p.strip()]
+
+
+_cached = None
+
+
+def get_settings() -> SimpleNamespace:
+    global _cached
+    if _cached is not None:
+        return _cached
+    _cached = SimpleNamespace(
+        env=get_env("ENV", "dev"),
+        log_level=get_env("LOG_LEVEL", "INFO"),
+        database_url=get_env(
+            "DATABASE_URL",
+            "sqlite+aiosqlite:///./eter-agent.db",
+        ),
+        ws_shared_secret=get_env("WS_SHARED_SECRET", "CHANGE_ME_IN_PROD"),
+        github_oauth_client_id=get_env("GITHUB_OAUTH_CLIENT_ID", ""),
+        github_oauth_client_secret=get_env("GITHUB_OAUTH_CLIENT_SECRET", ""),
+        railway_master_token=get_env("RAILWAY_MASTER_TOKEN", ""),
+        vapid_public_key=get_env("VAPID_PUBLIC_KEY", ""),
+        vapid_private_key=get_env("VAPID_PRIVATE_KEY", ""),
+        vapid_claims_email=get_env("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com"),
+        public_base_url=get_env("PUBLIC_BASE_URL", "http://localhost:8000"),
+        cors_origins=get_cors_origins(),
     )
-
-    # Runtime
-    env: Literal["dev", "staging", "prod"] = "dev"
-    log_level: str = "INFO"
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
-
-    # Database
-    database_url: str = "sqlite+aiosqlite:///./eter-agent.db"
-    # Examples:
-    #   sqlite+aiosqlite:///./eter-agent.db
-    #   postgresql+asyncpg://user:pass@host:5432/eter_agent
-
-    # WebSocket auth
-    ws_shared_secret: str = "CHANGE_ME_IN_PROD"
-
-    # GitHub OAuth (for PWA login)
-    github_oauth_client_id: str = ""
-    github_oauth_client_secret: str = ""
-
-    # Railway personal token (only used if PWA pushes tokens down to Mac)
-    # Railway does not support 3rd-party OAuth; we accept a manually-pasted token.
-    railway_master_token: str = ""
-
-    # Web Push (VAPID) for "approval needed" phone notifications
-    vapid_public_key: str = ""
-    vapid_private_key: str = ""
-    vapid_claims_email: str = "mailto:admin@example.com"
-
-    # Cross-origin / domain
-    public_base_url: str = "http://localhost:8000"
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def _split_cors(cls, v):
-        """Accept JSON arrays, comma-separated strings, or single values."""
-        if v is None or v == "":
-            return ["*"]
-        if isinstance(v, list):
-            return v
-        if isinstance(v, str):
-            s = v.strip()
-            if s.startswith("["):
-                # JSON array
-                import json
-                return json.loads(s)
-            # Comma-separated or single value
-            return [p.strip() for p in s.split(",") if p.strip()]
-        return v
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+    return _cached
