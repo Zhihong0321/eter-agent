@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Drop this into ~/Library/LaunchAgents/com.eteragent.mailbox.plist
+  Edit ETER_* env vars for the department, then:
+    launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.eteragent.mailbox.plist
+    launchctl enable gui/$UID/com.eteragent.mailbox
+    launchctl kickstart -k gui/$UID/com.eteragent.mailbox
+
+  To uninstall:
+    launchctl bootout gui/$UID/com.eteragent.mailbox
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.eteragent.mailbox</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string>
+    <string>/opt/homebrew/bin/python3</string>
+    <string>-m</string>
+    <string>mailbox_client</string>
+    <string>--profile</string>
+    <string>marketing</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ETER_DEPARTMENT_ID</key><string>marketing</string>
+    <key>ETER_WS_URL</key><string>wss://command-center.up.railway.app/ws</string>
+    <key>ETER_WS_SECRET</key><string>REPLACE_FROM_MAC_KEYCHAIN</string>
+    <key>ETER_PROFILE_DIR</key><string>/Users/USERNAME/.hermes/profiles/marketing</string>
+    <key>ETER_WORKSPACE</key><string>/Users/USERNAME/projects/marketing-workspace</string>
+    <key>LOG_LEVEL</key><string>INFO</string>
+  </dict>
+
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>/tmp/eter-agent-mailbox.out.log</string>
+  <key>StandardErrorPath</key><string>/tmp/eter-agent-mailbox.err.log</string>
+</dict>
+</plist>
