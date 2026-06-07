@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hermes Swarm Coordinator</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%238A2BE2'%3E%3Cpath d='M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z'/%3E%3C/svg%3E">
+</head>
+<body class="dark-mode">
+  
+  <!-- App Container -->
+  <div class="app-container">
+    
+    <!-- Top Glassmorphism Navigation Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-container">
+          <span class="material-symbols-outward logo-icon">insights</span>
+          <h1>Hermes <span class="gradient-text">Swarm</span></h1>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- Department Selector -->
+        <div class="dept-selector-container">
+          <span class="material-symbols-outlined select-icon">schema</span>
+          <select id="dept-select" class="dept-select">
+            <option value="marketing">Marketing</option>
+            <option value="sales">Sales</option>
+            <option value="operations">Operations</option>
+            <option value="engineering">Engineering</option>
+          </select>
+        </div>
+        
+        <!-- Connection Status Badge -->
+        <div class="status-badge" id="connection-status">
+          <span class="status-dot pulsing-orange"></span>
+          <span class="status-text">Connecting</span>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Floating Staging Preview Notification Banner -->
+    <div class="preview-banner hidden" id="preview-banner">
+      <div class="preview-banner-content">
+        <span class="material-symbols-outlined preview-icon">language</span>
+        <div class="preview-text-group">
+          <span class="preview-title">Staging Live</span>
+          <span class="preview-desc" id="preview-url-text">http://staging.example.com</span>
+        </div>
+      </div>
+      <a href="#" target="_blank" class="preview-btn" id="preview-btn-link">
+        Open Staging
+        <span class="material-symbols-outlined font-icon">open_in_new</span>
+      </a>
+      <button class="preview-close-btn" id="preview-close-btn" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Main Workspace Workspace -->
+    <main class="app-workspace">
+      
+      <!-- Left Pane: Chat Interface -->
+      <section class="pane chat-pane" id="chat-pane-view">
+        <div class="pane-header">
+          <h2>Console</h2>
+          <div class="agent-status" id="agent-status-badge">
+            <span class="agent-status-indicator offline"></span>
+            <span class="agent-status-label" id="agent-status-label">Agent Offline</span>
+          </div>
+        </div>
+        
+        <!-- Message list container -->
+        <div class="message-list" id="message-list">
+          <div class="system-message init-message">
+            <span class="material-symbols-outlined">info</span>
+            <p>Welcome to the Hermes Control Plane. Choose a department to sync sessions and start communication.</p>
+          </div>
+        </div>
+        
+        <!-- Typing indicator -->
+        <div class="typing-indicator-container hidden" id="typing-indicator">
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <span class="typing-text" id="typing-text">Agent is processing...</span>
+        </div>
+        
+        <!-- Chat Input Area -->
+        <form class="chat-input-area" id="chat-form">
+          <div class="input-wrapper">
+            <input type="text" id="chat-input" placeholder="Instruct the department swarm..." autocomplete="off" required>
+            <button type="submit" class="send-btn" id="send-btn" aria-label="Send message">
+              <span class="material-symbols-outlined">send</span>
+            </button>
+          </div>
+        </form>
+      </section>
+      
+      <!-- Right Pane: Task checklist and safety metrics -->
+      <section class="pane checklist-pane" id="checklist-pane-view">
+        <div class="pane-header">
+          <h2>Task Checklist</h2>
+          <div class="progress-container">
+            <span class="progress-text" id="progress-text">0 / 0 Completed</span>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progress-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Checklist tasks container -->
+        <div class="checklist-content">
+          <!-- Safety Constraints Section -->
+          <div class="safety-card hidden" id="safety-card">
+            <div class="safety-header">
+              <span class="material-symbols-outlined safety-icon">gshield</span>
+              <h3>Safety Constraints</h3>
+            </div>
+            <ul class="safety-list" id="safety-list">
+              <!-- Dynamically populated negative constraints -->
+            </ul>
+          </div>
+          
+          <!-- Task list -->
+          <div class="task-list" id="task-list">
+            <div class="empty-tasks-state" id="empty-tasks-state">
+              <span class="material-symbols-outlined empty-icon">assignment_late</span>
+              <p>No active session tasks found.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+    </main>
+    
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="mobile-nav">
+      <button class="mobile-nav-btn active" id="nav-chat-btn">
+        <span class="material-symbols-outlined">chat_bubble</span>
+        <span>Console</span>
+      </button>
+      <button class="mobile-nav-btn" id="nav-tasks-btn">
+        <span class="material-symbols-outlined">rule</span>
+        <span>Tasks</span>
+      </button>
+    </nav>
+    
+    <!-- Approval Blocking Overlay -->
+    <div class="modal-overlay hidden" id="approval-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-header-title">
+            <span class="material-symbols-outlined modal-icon text-warning">security</span>
+            <h3>Plan Approval Required</h3>
+          </div>
+          <span class="modal-badge">Logical processing gate</span>
+        </div>
+        
+        <div class="modal-body">
+          <p class="modal-description" id="approval-description">
+            The agent has paused execution to request approval for the following action path:
+          </p>
+          
+          <div class="plan-preview-container">
+            <div class="plan-summary" id="approval-summary">
+              Deploying dynamic registration page for campaign.
+            </div>
+            <pre class="plan-details-code"><code id="approval-plan"># Bash commands
+npm run build
+railway up --detach</code></pre>
+          </div>
+          
+          <div class="feedback-input-container">
+            <label for="approval-feedback">Rejection Feedback / Notes (Optional):</label>
+            <textarea id="approval-feedback" placeholder="Describe changes needed if rejecting, or add instructions..."></textarea>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="modal-btn btn-danger" id="reject-btn">
+            <span class="material-symbols-outlined font-icon">cancel</span>
+            Reject Plan
+          </button>
+          <button class="modal-btn btn-success" id="approve-btn">
+            <span class="material-symbols-outlined font-icon">check_circle</span>
+            Approve Plan
+          </button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
