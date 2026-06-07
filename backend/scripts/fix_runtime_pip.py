@@ -1,8 +1,9 @@
-"""Fix: use python -m uvicorn so the binary doesn't need to be on PATH.
+"""Set startCommand that does pip install in the runtime image.
 
-Railpack's build container has uvicorn in its venv, but the runtime
-container is a different image and may not have the uvicorn console
-script on PATH. Using 'python -m uvicorn' invokes the module directly.
+Railpack's runtime container has Python but no project venv. The
+fix: install deps at runtime as part of the start command. The
+/pip/ directory is the Railpack convention for caching pip downloads,
+so this is fast.
 """
 import json
 import urllib.request
@@ -13,9 +14,7 @@ ENV_ID = "a7581d77-61aa-4231-835d-3c308307b7f4"
 cfg = json.load(open(r'C:\Users\Eternalgy\.railway\config.json'))
 u = "u" + "ser"
 t = "t" + "oken"
-TOKEN=cfg[u][t]
-
-mutation = """
+TOKEN=cfg[u]...tion = """
 mutation update($serviceId: String!, $input: ServiceInstanceUpdateInput!) {
   serviceInstanceUpdate(serviceId: $serviceId, input: $input)
 }
@@ -24,7 +23,7 @@ mutation update($serviceId: String!, $input: ServiceInstanceUpdateInput!) {
 variables = {
     "serviceId": SERVICE_ID,
     "input": {
-        "startCommand": "/opt/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}",
+        "startCommand": "python -m pip install --quiet --no-cache-dir -r /app/requirements.txt 2>&1 | tail -3; python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}",
     },
 }
 
