@@ -1,21 +1,19 @@
 """Centralized settings loaded from environment variables.
 
 Single source of truth for connection strings, secrets, and feature flags.
-All values come from the environment (or a local .env in dev); no defaults
-that would silently work in production.
+All values come from the environment; no .env lookup in production.
 """
 
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
+        env_file=None,  # no .env in production; Railway injects env vars
         case_sensitive=False,
         extra="ignore",
     )
@@ -49,6 +47,24 @@ class Settings(BaseSettings):
 
     # Cross-origin / domain
     public_base_url: str = "http://localhost:8000"
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_cors(cls, v):
+        """Accept JSON arrays, comma-separated strings, or single values."""
+        if v is None or v == "":
+            return ["*"]
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            s = v.strip()
+            if s.startswith("["):
+                # JSON array
+                import json
+                return json.loads(s)
+            # Comma-separated or single value
+            return [p.strip() for p in s.split(",") if p.strip()]
+        return v
 
 
 @lru_cache
