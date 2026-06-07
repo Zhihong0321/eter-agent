@@ -16,6 +16,7 @@
   const connectionStatus = document.getElementById('connection-status');
   const agentStatusBadge = document.getElementById('agent-status-badge');
   const agentStatusLabel = document.getElementById('agent-status-label');
+  const agentStatusIndicator = agentStatusBadge.querySelector('.agent-status-indicator');
   const messageList = document.getElementById('message-list');
   const typingIndicator = document.getElementById('typing-indicator');
   const typingText = document.getElementById('typing-text');
