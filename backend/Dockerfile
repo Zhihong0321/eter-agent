@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 RUN pip install --upgrade pip && pip install .
 
-COPY app ./app
+COPY backend/app ./app
 
 ENV PORT=8000
 EXPOSE 8000
