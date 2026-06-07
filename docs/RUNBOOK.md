@@ -8,33 +8,18 @@ cd E:\hermes-ai\eter-agent\backend
 .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 # open http://localhost:8000/health
 
-# Smoke test the Mac daemon logic on the laptop
-.venv\Scripts\python.exe daemon/smoke_test.py --profile-dir ~/.hermes/profiles/marketing
-
-# Tail the WS with websocat (after server is running and WS_SHARED_SECRET is set)
-websocat ws://localhost:8000/ws -H "Sec-WebSocket-Protocol: eter"
-# then send a hello frame as JSON
+# Run the test
+.venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-## Deploy backend to Railway
+## Deploy backend to Coolify
 
-```bash
-cd E:\hermes-ai\eter-agent\backend
-railway login
-railway init
-railway up
-railway domain   # gives wss://...up.railway.app
-# then set env vars in the Railway dashboard
-```
-
-## Deploy the PWA
-
-```bash
-cd E:\hermes-ai\eter-agent\frontend
-# after the vite scaffold exists
-npm run build
-# Vercel / Netlify / Railway static / Cloudflare Pages all work
-```
+See `COOLIFY_DEPLOY.md` for the full walkthrough. Summary:
+1. Push the GitHub repo.
+2. In Coolify, create a new Resource > Application > Public/Private.
+3. Point it at the GitHub repo, build pack = Dockerfile.
+4. Set env vars: `DATABASE_URL`, `WS_SHARED_SECRET`, `CORS_ORIGINS`.
+5. Deploy. Coolify gives you a `https://eter-agent.example.com` URL.
 
 ## Mac Mini production install (per department)
 
@@ -50,10 +35,11 @@ See `daemon/README.md`.
 
 ## Debugging
 
-- If the phone never receives a reply, check Railway logs for the
-  `agent_chat` frame leaving the Mac daemon.
-- If approval requests are stuck `pending`, the most common cause is the
-  phone socket disconnected. The phone should auto-reconnect on app
-  foreground.
-- If `state_update` is missing, the Mac daemon's smoke test is probably
-  failing. Re-run `smoke_test.py` on the Mac and read the YAML.
+- If the phone never receives a reply, check the backend logs for
+  the `agent_chat` frame leaving the Mac daemon.
+- If approval requests are stuck `pending`, the most common cause
+  is the phone socket disconnected. The phone should auto-reconnect
+  on app foreground.
+- If `state_update` is missing, the Mac daemon's smoke test is
+  probably failing. Re-run `smoke_test.py` on the Mac and read the
+  YAML.

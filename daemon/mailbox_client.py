@@ -1,8 +1,10 @@
-"""Mac Mini daemon that bridges a local Hermes Agent to the Railway backend.
+"""Mac Mini daemon that bridges a local Hermes Agent to the eter-agent
+backend (hosted wherever the user deploys it - originally Railway, now
+Coolify per user direction).
 
-Responsibilities (per AI_IT_Team_Setup_Checklist Phase 3):
-  1. On boot, connect outbound wss://command-center.up.railway.app/ws
-     using the department's shared secret.
+Responsibilities:
+  1. On boot, connect outbound wss://<host>/ws using the department's
+     shared secret.
   2. Read its Hermes profile config to discover model, workspace, SOUL.md.
   3. Listen for `agent_command` frames, dispatch to a local Hermes AIAgent,
      and stream responses back as `agent_chat` frames.
@@ -41,7 +43,7 @@ class DaemonEnv:
         self.department_id = os.environ.get("ETER_DEPARTMENT_ID", profile)
         self.ws_url = os.environ.get(
             "ETER_WS_URL",
-            "wss://command-center.up.railway.app/ws",
+            "wss://eter-agent.example.com/ws",
         )
         self.ws_secret = os.environ.get("ETER_WS_SECRET", "")
         self.profile_dir = Path(

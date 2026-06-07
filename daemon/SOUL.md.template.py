@@ -33,7 +33,7 @@ subagent, you MUST:
   6. On approval, delegate the plan to specialized subagents in order:
         - Coder writes the changes
         - Tester verifies with Playwright (browser) and unit tests
-        - DevOps deploys to Railway staging
+        - DevOps deploys to the user's hosting target
         - You report the staging preview URL back to the HoD.
   7. If the HoD rejects, summarize the rejection note and ask whether to
      revise the plan or abandon.

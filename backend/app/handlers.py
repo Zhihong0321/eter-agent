@@ -1,8 +1,8 @@
 """Message handlers - thin adapters that parse, persist, and fan out.
 
-DB writes happen here. The actual WebSocket fan-out is delegated back to
-the DepartmentRoom. Keep these functions small; complex business logic
-lives in services/ (future).
+DB writes happen here. The actual WebSocket fan-out is delegated
+back to the DepartmentRoom. Wire format is JSON dicts; the
+'type' field dispatches to the right handler.
 """
 
 from __future__ import annotations
@@ -16,15 +16,6 @@ from sqlalchemy import select
 
 from app.db import AsyncSessionLocal
 from app.models import Approval, Department, Message, Preview, Task
-from app.schemas import (
-    WSAgentChat,
-    WSAgentHeartbeat,
-    WSAgentRequestApproval,
-    WSAgentStagingPreview,
-    WSAgentStateUpdate,
-    WSUserApprovalResponse,
-    WSUserChat,
-)
 from app.room import DepartmentRoom
 
 log = logging.getLogger(__name__)
@@ -35,22 +26,20 @@ log = logging.getLogger(__name__)
 async def handle_user_chat(
     room: DepartmentRoom, msg: dict[str, Any], _ws: WebSocket
 ) -> None:
-    payload = WSUserChat.model_validate(msg)
     async with AsyncSessionLocal() as db:
         m = Message(
-            session_id=payload.session_id,
+            session_id=msg["session_id"],
             role="user",
-            content=payload.content,
+            content=msg["content"],
         )
         db.add(m)
         await db.commit()
 
-    # Fan out to all agent sockets for this department
     await room.send_to_agents(
         {
             "type": "agent_command",
-            "session_id": payload.session_id,
-            "content": payload.content,
+            "session_id": msg["session_id"],
+            "content": msg["content"],
         }
     )
 
@@ -58,23 +47,22 @@ async def handle_user_chat(
 async def handle_user_approval_response(
     room: DepartmentRoom, msg: dict[str, Any]
 ) -> None:
-    payload = WSUserApprovalResponse.model_validate(msg)
     async with AsyncSessionLocal() as db:
-        a = await db.get(Approval, payload.approval_id)
+        a = await db.get(Approval, msg["approval_id"])
         if not a:
-            log.warning("approval %s not found", payload.approval_id)
+            log.warning("approval %s not found", msg["approval_id"])
             return
-        a.status = payload.decision
-        a.response_note = payload.note
+        a.status = msg["decision"]
+        a.response_note = msg.get("note")
         a.resolved_at = datetime.now(timezone.utc)
         await db.commit()
 
     await room.send_to_agents(
         {
             "type": "approval_result",
-            "approval_id": payload.approval_id,
-            "decision": payload.decision,
-            "note": payload.note,
+            "approval_id": msg["approval_id"],
+            "decision": msg["decision"],
+            "note": msg.get("note"),
         }
     )
 
@@ -82,12 +70,11 @@ async def handle_user_approval_response(
 # ---------------- agent -> server (Mac daemon) ----------------
 
 async def handle_agent_chat(room: DepartmentRoom, msg: dict[str, Any]) -> None:
-    payload = WSAgentChat.model_validate(msg)
     async with AsyncSessionLocal() as db:
         m = Message(
-            session_id=payload.session_id,
-            role=payload.role,
-            content=payload.content,
+            session_id=msg["session_id"],
+            role=msg.get("role", "agent"),
+            content=msg["content"],
         )
         db.add(m)
         await db.commit()
@@ -95,9 +82,9 @@ async def handle_agent_chat(room: DepartmentRoom, msg: dict[str, Any]) -> None:
     await room.broadcast_to_users(
         {
             "type": "push_to_user",
-            "session_id": payload.session_id,
-            "content": payload.content,
-            "role": payload.role,
+            "session_id": msg["session_id"],
+            "content": msg["content"],
+            "role": msg.get("role", "agent"),
         }
     )
 
@@ -105,9 +92,9 @@ async def handle_agent_chat(room: DepartmentRoom, msg: dict[str, Any]) -> None:
 async def handle_agent_state_update(
     room: DepartmentRoom, msg: dict[str, Any]
 ) -> None:
-    payload = WSAgentStateUpdate.model_validate(msg)
+    tasks = msg.get("tasks", [])
     async with AsyncSessionLocal() as db:
-        for item in payload.tasks:
+        for item in tasks:
             key = item.get("key")
             if not key:
                 continue
@@ -135,21 +122,20 @@ async def handle_agent_state_update(
         await db.commit()
 
     await room.broadcast_to_users(
-        {"type": "state_update", "tasks": payload.tasks}
+        {"type": "state_update", "tasks": tasks}
     )
 
 
 async def handle_agent_request_approval(
     room: DepartmentRoom, msg: dict[str, Any]
 ) -> None:
-    payload = WSAgentRequestApproval.model_validate(msg)
     async with AsyncSessionLocal() as db:
         a = Approval(
             department_id=room.department_id,
-            session_id=payload.session_id,
-            plan_id=payload.plan_id,
-            summary=payload.summary,
-            plan=payload.plan,
+            session_id=msg["session_id"],
+            plan_id=msg["plan_id"],
+            summary=msg["summary"],
+            plan=msg["plan"],
             status="pending",
         )
         db.add(a)
@@ -161,9 +147,9 @@ async def handle_agent_request_approval(
         {
             "type": "approval_request",
             "approval_id": approval_id,
-            "plan_id": payload.plan_id,
-            "summary": payload.summary,
-            "plan": payload.plan,
+            "plan_id": msg["plan_id"],
+            "summary": msg["summary"],
+            "plan": msg["plan"],
         }
     )
 
@@ -171,17 +157,15 @@ async def handle_agent_request_approval(
 async def handle_agent_staging_preview(
     room: DepartmentRoom, msg: dict[str, Any]
 ) -> None:
-    payload = WSAgentStagingPreview.model_validate(msg)
     async with AsyncSessionLocal() as db:
         db.add(
             Preview(
                 department_id=room.department_id,
-                url=payload.url,
-                label=payload.label,
-                expires_at=payload.expires_at,
+                url=msg["url"],
+                label=msg.get("label", "staging"),
+                expires_at=msg.get("expires_at"),
             )
         )
-        # Touch department as a soft online signal
         dept = await db.get(Department, room.department_id)
         if dept:
             dept.last_ping_at = datetime.now(timezone.utc)
@@ -190,8 +174,8 @@ async def handle_agent_staging_preview(
     await room.broadcast_to_users(
         {
             "type": "staging_preview",
-            "url": payload.url,
-            "label": payload.label,
+            "url": msg["url"],
+            "label": msg.get("label", "staging"),
         }
     )
 
@@ -199,7 +183,6 @@ async def handle_agent_staging_preview(
 async def handle_agent_heartbeat(
     room: DepartmentRoom, msg: dict[str, Any]
 ) -> None:
-    payload = WSAgentHeartbeat.model_validate(msg)
     async with AsyncSessionLocal() as db:
         dept = await db.get(Department, room.department_id)
         if not dept:
@@ -207,6 +190,6 @@ async def handle_agent_heartbeat(
                 id=room.department_id, name=room.department_id, status="online"
             )
             db.add(dept)
-        dept.status = payload.status
+        dept.status = msg.get("status", "online")
         dept.last_ping_at = datetime.now(timezone.utc)
         await db.commit()

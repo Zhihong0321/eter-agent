@@ -27,7 +27,6 @@ CHECKS: list[tuple[str, str, Callable[[], tuple[bool, str]]]] = [
     # (id, label, runner returning (ok, version_or_detail))
     ("git",       "git --version",        lambda: _run(["git", "--version"])),
     ("playwright","npx playwright",       lambda: _run(["npx", "playwright", "--version"])),
-    ("railway",   "railway status",       lambda: _run(["railway", "status"], allow_fail=True)),
     ("github_cli","gh auth status",       lambda: _run(["gh", "auth", "status"], allow_fail=True)),
     ("node",      "node --version",       lambda: _run(["node", "--version"])),
     ("python",    "python --version",     lambda: _run([sys.executable, "--version"])),

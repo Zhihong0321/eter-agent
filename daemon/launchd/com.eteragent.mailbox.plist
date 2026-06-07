@@ -27,7 +27,7 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>ETER_DEPARTMENT_ID</key><string>marketing</string>
-    <key>ETER_WS_URL</key><string>wss://command-center.up.railway.app/ws</string>
+    <key>ETER_WS_URL</key><string>wss://eter-agent.example.com/ws</string>
     <key>ETER_WS_SECRET</key><string>REPLACE_FROM_MAC_KEYCHAIN</string>
     <key>ETER_PROFILE_DIR</key><string>/Users/USERNAME/.hermes/profiles/marketing</string>
     <key>ETER_WORKSPACE</key><string>/Users/USERNAME/projects/marketing-workspace</string>

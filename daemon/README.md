@@ -1,12 +1,12 @@
 # Mac daemon (mailbox_client)
 
 This directory holds the Python process that runs on the M4 Mac Mini and
-bridges a local Hermes Agent to the Railway backend.
+bridges a local Hermes Agent to the eter-agent backend.
 
 ## Files
 
 - `mailbox_client.py`      outbound WebSocket client (no inbound ports)
-- `smoke_test.py`          probes git / playwright / railway / gh / node / python
+- `smoke_test.py`          probes git / playwright / gh / node / python
                            and writes `environment_awareness.yaml` to the
                            Hermes profile directory
 - `SOUL.md.template.py`    string template for the per-department `SOUL.md`
@@ -39,8 +39,6 @@ tail -F /tmp/eter-agent-mailbox.out.log
 
 ## Security notes
 
-- The daemon ONLY opens outbound TCP 443 to Railway. No inbound ports.
+- The daemon ONLY opens outbound TCP 443 to the backend. No inbound ports.
 - `ETER_WS_SECRET` should be stored in the macOS Keychain and loaded by the
   LaunchAgent, not committed in plaintext.
-- The Mac daemon holds a `RAILWAY_TOKEN` in its `.env` to deploy to staging
-  via the local Railway CLI.

@@ -36,7 +36,6 @@ def get_settings() -> SimpleNamespace:
         ws_shared_secret=get_env("WS_SHARED_SECRET", "CHANGE_ME_IN_PROD"),
         github_oauth_client_id=get_env("GITHUB_OAUTH_CLIENT_ID", ""),
         github_oauth_client_secret=get_env("GITHUB_OAUTH_CLIENT_SECRET", ""),
-        railway_master_token=get_env("RAILWAY_MASTER_TOKEN", ""),
         vapid_public_key=get_env("VAPID_PUBLIC_KEY", ""),
         vapid_private_key=get_env("VAPID_PRIVATE_KEY", ""),
         vapid_claims_email=get_env("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com"),
