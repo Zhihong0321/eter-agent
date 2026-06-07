@@ -92,14 +92,14 @@
       
       sessionId = msgData.session_id;
       
-      // Update Agent status depending on if there has been any activity
-      updateAgentOnlineStatus(sessionId ? 'online' : 'offline');
-      
       // 1. Process and render chat messages
       processMessages(msgData.messages);
       
       // 2. Process and render task checklist
       processTasks(taskData.tasks);
+      
+      // 3. Update status indicator & agent status badge
+      updateStatusIndicator(msgData.messages, taskData.tasks, msgData);
       
     } catch (err) {
       console.error('Data sync error:', err);
@@ -312,10 +312,82 @@
     messageList.scrollTop = messageList.scrollHeight;
   }
 
-  function updateAgentOnlineStatus(status) {
-    const isOnline = status === 'online';
-    agentStatusIndicator.className = `agent-status-indicator ${isOnline ? 'online' : 'offline'}`;
-    agentStatusLabel.textContent = isOnline ? 'Agent Active' : 'Agent Idle';
+  function updateAgentOnlineStatus(status, isOffline, lastSeenStr) {
+    agentStatusIndicator.className = 'agent-status-indicator';
+    if (isOffline) {
+      agentStatusIndicator.classList.add('offline');
+      agentStatusLabel.textContent = `Agent Offline (${lastSeenStr})`;
+    } else if (status === 'busy') {
+      agentStatusIndicator.classList.add('busy');
+      agentStatusLabel.textContent = 'Agent Busy';
+    } else if (status === 'online') {
+      agentStatusIndicator.classList.add('online');
+      agentStatusLabel.textContent = 'Agent Online';
+    } else {
+      agentStatusIndicator.classList.add('offline');
+      agentStatusLabel.textContent = 'Agent Idle';
+    }
+  }
+
+  function updateStatusIndicator(messages, tasks, agentInfo) {
+    if (!messages || messages.length === 0) {
+      hideTypingIndicator();
+      return;
+    }
+    
+    const latestMsg = messages[messages.length - 1];
+    
+    // Check if Hermes PC is offline based on last ping time (threshold: 15 seconds)
+    let isOffline = false;
+    let lastSeenStr = '';
+    if (agentInfo && agentInfo.agent_last_ping) {
+      const lastPingTime = new Date(agentInfo.agent_last_ping);
+      const diffMs = Date.now() - lastPingTime.getTime();
+      if (diffMs > 15000) {
+        isOffline = true;
+        const diffSec = Math.round(diffMs / 1000);
+        if (diffSec < 60) {
+          lastSeenStr = `last seen ${diffSec}s ago`;
+        } else {
+          const diffMin = Math.round(diffSec / 60);
+          lastSeenStr = `last seen ${diffMin}m ago`;
+        }
+      }
+    } else {
+      isOffline = true;
+      lastSeenStr = 'never seen';
+    }
+    
+    // Update the top header's online status badge
+    updateAgentOnlineStatus(agentInfo ? agentInfo.agent_status : 'offline', isOffline, lastSeenStr);
+
+    if (latestMsg.sender === 'user') {
+      // User sent a message, agent is processing
+      if (isOffline) {
+        showTypingIndicator(`Waiting for Hermes PC (${lastSeenStr} - offline)...`);
+        return;
+      }
+      
+      if (agentInfo && agentInfo.agent_activity) {
+        showTypingIndicator(agentInfo.agent_activity);
+      } else {
+        const runningTask = tasks ? tasks.find(t => t.status === 'running') : null;
+        if (runningTask) {
+          showTypingIndicator(`Executing: ${runningTask.title}...`);
+        } else if (tasks && tasks.length > 0) {
+          showTypingIndicator('Hermes is planning next steps...');
+        } else {
+          showTypingIndicator('Message sent, waiting for Hermes PC...');
+        }
+      }
+    } else {
+      // Latest message is from agent
+      if (latestMsg.text.startsWith('[APPROVAL_REQUEST]')) {
+        showTypingIndicator((agentInfo && agentInfo.agent_activity) || 'Waiting for plan approval...');
+      } else {
+        hideTypingIndicator();
+      }
+    }
   }
 
   function showTypingIndicator(label) {
@@ -385,7 +457,6 @@
           completedCount++;
         } else if (task.status === 'running') {
           icon.textContent = 'sync';
-          showTypingIndicator(`Executing: ${task.title}`);
         } else {
           icon.textContent = 'radio_button_unchecked';
         }
@@ -424,12 +495,6 @@
     progressText.textContent = `${completedCount} / ${totalCount} Completed`;
     const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
     progressBarFill.style.width = `${percentage}%`;
-    
-    // Hide typing indicator if all are idle
-    const isSomethingRunning = tasks.some(task => task.status === 'running');
-    if (!isSomethingRunning) {
-      hideTypingIndicator();
-    }
   }
 
   // --- Staging Banner ---

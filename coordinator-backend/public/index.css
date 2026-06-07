@@ -163,12 +163,11 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Department Selector */
 .dept-selector-container {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
   background: hsla(228, 12%, 20%, 0.5);
   border: 1px solid var(--border-color);
-  padding: 6px 12px;
   border-radius: var(--border-radius-md);
   transition: var(--transition-smooth);
 }
@@ -179,6 +178,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .select-icon {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
   font-size: 18px;
   color: var(--text-secondary);
 }
@@ -192,7 +194,8 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 500;
   outline: none;
   cursor: pointer;
-  padding-right: 4px;
+  padding: 6px 12px 6px 36px;
+  width: 100%;
 }
 
 .dept-select option {
@@ -407,6 +410,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .agent-status-indicator.online { background-color: var(--success-color); box-shadow: 0 0 6px var(--success-color); }
 .agent-status-indicator.offline { background-color: var(--text-muted); }
+.agent-status-indicator.busy { background-color: var(--warning-color); box-shadow: 0 0 6px var(--warning-color); }
 
 .message-list {
   flex: 1;

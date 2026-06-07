@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS departments (
     id VARCHAR(50) PRIMARY KEY, -- e.g., "marketing", "sales"
     name VARCHAR(100) NOT NULL,
     status VARCHAR(20) DEFAULT 'offline', -- 'online' or 'offline'
-    last_ping_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_ping_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    activity TEXT
 );
 
 -- 2. Chat Sessions

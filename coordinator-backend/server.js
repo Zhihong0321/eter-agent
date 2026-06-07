@@ -30,6 +30,11 @@ async function initDb() {
     try {
       const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
       await db.query(schemaSql);
+      try {
+        await db.query(`ALTER TABLE departments ADD COLUMN IF NOT EXISTS activity TEXT`);
+      } catch (err) {
+        console.error("Postgres migration error (add activity to departments):", err);
+      }
       console.log("PostgreSQL Database tables verified/created successfully.");
     } catch (err) {
       console.error("Error initializing PostgreSQL schema:", err);
@@ -50,6 +55,12 @@ async function initDb() {
             last_ping_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      db.run(`ALTER TABLE departments ADD COLUMN activity TEXT`, (err) => {
+        // Ignore error if column already exists
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error("SQLite migration error (add activity to departments):", err);
+        }
+      });
       db.run(`
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
@@ -167,6 +178,28 @@ app.post('/api/dept/:dept_id/sessions/:session_id/tasks/:task_id/status', async 
       // For now, return 404
       return res.status(404).json({ error: `Task ID ${task_id} not found in session ${session_id}.` });
     }
+
+    // Fetch the task details to get the title
+    const taskDetailsResult = await runQuery(
+      `SELECT title FROM tasks WHERE id = $1 AND session_id = $2`,
+      [parseInt(task_id), session_id]
+    );
+    const taskTitle = taskDetailsResult.rows[0]?.title || '';
+
+    // Update department activity/status
+    let activityText = '';
+    if (status === 'running') {
+      activityText = `Executing: ${taskTitle}...`;
+    } else if (status === 'completed') {
+      activityText = `Completed: ${taskTitle}`;
+    }
+
+    if (activityText) {
+      await runQuery(
+        `UPDATE departments SET status = 'busy', activity = $1, last_ping_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [activityText, dept_id]
+      );
+    }
     
     // 2. Fetch the revised list of tasks
     const tasksResult = await runQuery(
@@ -252,13 +285,48 @@ async function getOrCreateActiveSession(dept_id) {
 // 1. GET /api/messages
 app.get('/api/messages', async (req, res) => {
   const dept = req.query.dept || 'marketing';
+  const role = req.query.role;
   try {
     const session_id = await getOrCreateActiveSession(dept);
+    
+    // If request is from the agent, register heartbeat
+    if (role === 'agent') {
+      const exists = await runQuery(`SELECT id FROM departments WHERE id = $1`, [dept]);
+      if (exists.rows.length === 0) {
+        await runQuery(
+          `INSERT INTO departments (id, name, status, last_ping_at) VALUES ($1, $2, 'online', CURRENT_TIMESTAMP)`,
+          [dept, `${dept.charAt(0).toUpperCase() + dept.slice(1)} Team`]
+        );
+      } else {
+        await runQuery(
+          `UPDATE departments SET 
+             status = CASE WHEN status = 'busy' THEN 'busy' ELSE 'online' END,
+             last_ping_at = CURRENT_TIMESTAMP 
+           WHERE id = $1`,
+          [dept]
+        );
+      }
+    }
+
     const result = await runQuery(
       `SELECT sender, text, timestamp FROM messages WHERE session_id = $1 ORDER BY timestamp ASC`,
       [session_id]
     );
-    return res.json({ session_id, messages: result.rows });
+    
+    // Fetch department details
+    const deptResult = await runQuery(
+      `SELECT status, activity, last_ping_at FROM departments WHERE id = $1`,
+      [dept]
+    );
+    const deptInfo = deptResult.rows[0] || { status: 'offline', activity: '', last_ping_at: null };
+
+    return res.json({ 
+      session_id, 
+      messages: result.rows,
+      agent_status: deptInfo.status,
+      agent_activity: deptInfo.activity,
+      agent_last_ping: deptInfo.last_ping_at
+    });
   } catch (err) {
     console.error("Error fetching messages:", err);
     return res.status(500).json({ error: "Internal Database Error" });
@@ -296,6 +364,32 @@ app.post('/api/sessions/new', async (req, res) => {
     return res.json({ success: true, session_id });
   } catch (err) {
     console.error("Error creating manual session:", err);
+    return res.status(500).json({ error: "Internal Database Error" });
+  }
+});
+
+// 6. POST /api/dept/:dept_id/activity
+app.post('/api/dept/:dept_id/activity', async (req, res) => {
+  const { dept_id } = req.params;
+  const { status, activity } = req.body;
+  
+  try {
+    const exists = await runQuery(`SELECT id FROM departments WHERE id = $1`, [dept_id]);
+    if (exists.rows.length === 0) {
+      await runQuery(
+        `INSERT INTO departments (id, name, status, last_ping_at, activity) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)`,
+        [dept_id, `${dept_id.charAt(0).toUpperCase() + dept_id.slice(1)} Team`, status || 'online', activity || '']
+      );
+    } else {
+      await runQuery(
+        `UPDATE departments SET status = $1, activity = $2, last_ping_at = CURRENT_TIMESTAMP WHERE id = $3`,
+        [status || 'online', activity || '', dept_id]
+      );
+    }
+    
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Error updating agent activity:", err);
     return res.status(500).json({ error: "Internal Database Error" });
   }
 });
