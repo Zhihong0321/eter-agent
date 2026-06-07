@@ -14,8 +14,9 @@ ENV_ID = "a7581d77-61aa-4231-835d-3c308307b7f4"
 cfg = json.load(open(r'C:\Users\Eternalgy\.railway\config.json'))
 u = "u" + "ser"
 t = "t" + "oken"
-TOKEN=cfg[u]...tion = """
-mutation update($serviceId: String!, $input: ServiceInstanceUpdateInput!) {
+TOKEN=cfg[u][t]
+
+mutation = """
   serviceInstanceUpdate(serviceId: $serviceId, input: $input)
 }
 """
