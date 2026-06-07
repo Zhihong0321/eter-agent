@@ -286,6 +286,20 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
+// 5. POST /api/sessions/new
+app.post('/api/sessions/new', async (req, res) => {
+  const dept = req.query.dept || 'marketing';
+  try {
+    const session_id = `sess_${Date.now()}`;
+    await runQuery(`INSERT INTO sessions (id, department_id) VALUES ($1, $2)`, [session_id, dept]);
+    console.log(`Manual new session created: ${session_id} for department: ${dept}`);
+    return res.json({ success: true, session_id });
+  } catch (err) {
+    console.error("Error creating manual session:", err);
+    return res.status(500).json({ error: "Internal Database Error" });
+  }
+});
+
 // 3. GET /api/tasks
 app.get('/api/tasks', async (req, res) => {
   const dept = req.query.dept || 'marketing';

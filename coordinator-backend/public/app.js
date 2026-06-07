@@ -13,6 +13,7 @@
   
   // DOM Elements
   const deptSelect = document.getElementById('dept-select');
+  const newSessionBtn = document.getElementById('new-session-btn');
   const connectionStatus = document.getElementById('connection-status');
   const agentStatusBadge = document.getElementById('agent-status-badge');
   const agentStatusLabel = document.getElementById('agent-status-label');
@@ -56,6 +57,7 @@
     
     // Set up event listeners
     deptSelect.addEventListener('change', handleDeptChange);
+    newSessionBtn.addEventListener('click', handleNewSessionRequest);
     chatForm.addEventListener('submit', handleSendMessage);
     previewCloseBtn.addEventListener('click', hidePreviewBanner);
     
@@ -137,6 +139,27 @@
     messageList.innerHTML = '';
     
     syncData();
+  }
+
+  async function handleNewSessionRequest() {
+    if (!confirm('Are you sure you want to start a new session? This will archive the current chat history and tasks.')) return;
+    try {
+      const res = await fetch(`/api/sessions/new?dept=${activeDept}`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to create new session');
+      
+      // Reset client states
+      sessionId = null;
+      lastMessageCount = 0;
+      lastTaskStateHash = '';
+      currentApprovalText = null;
+      messageList.innerHTML = '';
+      
+      appendSystemMessage('Fresh new session started.');
+      await syncData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to start a new session. Please check your network.');
+    }
   }
 
   // --- Message Processing ---

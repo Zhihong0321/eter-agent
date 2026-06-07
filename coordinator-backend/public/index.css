@@ -211,6 +211,34 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--border-radius-md);
 }
 
+/* Header Button Styles */
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: hsla(228, 12%, 20%, 0.5);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: var(--border-radius-md);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  outline: none;
+}
+
+.header-btn:hover {
+  background: hsla(228, 12%, 25%, 0.8);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.header-btn:active {
+  transform: translateY(1px);
+}
+
 .status-text {
   font-size: 12px;
   font-weight: 600;
