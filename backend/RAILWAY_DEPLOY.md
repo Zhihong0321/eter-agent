@@ -34,3 +34,5 @@ railway domain
 # --- 7. Smoke test. ---
 curl https://eter-agent.up.railway.app/health
 # expect: {"status":"ok","service":"eter-agent-backend"}
+
+Last updated: 2026-06-07T08:44:16Z - switched to GitHub auto-deploy
